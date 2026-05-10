@@ -14,7 +14,7 @@ __pycache__/
 
 data/raw/
 data/processed/
-data/warehouse/
+# data/warehouse/  ← committed for Streamlit Cloud demo (20 MB total)
 dbt_*/target/
 dbt_*/logs/
 dbt_*/.user.yml
@@ -24,7 +24,6 @@ dbt_*/.user.yml
 .env
 !.env.example
 .streamlit/secrets.toml
-*.duckdb
 *.duckdb.wal
 node_modules/
 .idea/
