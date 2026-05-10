@@ -1,0 +1,29 @@
+name: quant-alpha-foundation
+default_environment: local
+
+environments:
+  local:
+    connections:
+      - name: duckdb_local
+        type: duckdb
+        database: "{{ env.PROJECT_ROOT }}/data/warehouse/quant_alpha.duckdb"
+      - name: duckdb_energy
+        type: duckdb
+        database: "{{ env.PROJECT_ROOT }}/data/warehouse/second_foundation.duckdb"
+
+  cloud:
+    connections:
+      - name: bigquery_main
+        type: bigquery
+        project: "{{ env.GCP_PROJECT_ID }}"
+        location: EU
+        service_account_file: "{{ env.GOOGLE_APPLICATION_CREDENTIALS }}"
+      - name: gcs_raw
+        type: gcs
+        bucket: "{{ env.GCS_BUCKET_NAME }}"
+
+pipeline_defaults:
+  schedule: "0 6 * * 1-5"   # 06:00 UTC Mon–Fri
+  notifications:
+    on_failure:
+      - slack: "#quant-alerts"

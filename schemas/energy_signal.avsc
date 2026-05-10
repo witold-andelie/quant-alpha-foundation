@@ -1,0 +1,12 @@
+{
+  "type": "record",
+  "name": "EnergySignal",
+  "namespace": "quant.alpha.streaming",
+  "fields": [
+    {"name": "timestamp", "type": "string"},
+    {"name": "market", "type": "string"},
+    {"name": "spot_price", "type": "double"},
+    {"name": "residual_load", "type": "double"},
+    {"name": "imbalance_price", "type": "double"}
+  ]
+}

@@ -1,0 +1,32 @@
+version: 2
+
+models:
+  - name: fct_energy_alpha_diagnostics
+    description: "IS/OOS diagnostics for the Second Foundation energy alpha expressions."
+    columns:
+      - name: alpha_name
+        tests:
+          - not_null
+      - name: consistency_score
+        tests:
+          - not_null
+
+  - name: fct_energy_backtest_daily
+    description: "Market-neutral hourly energy alpha backtest path."
+    columns:
+      - name: market_ts
+        tests:
+          - not_null
+      - name: equity_curve
+        tests:
+          - not_null
+
+  - name: fct_energy_market_quality
+    description: "Data contract and quality checks for power-market inputs."
+    columns:
+      - name: check_name
+        tests:
+          - not_null
+      - name: passed
+        tests:
+          - not_null

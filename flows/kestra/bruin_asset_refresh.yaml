@@ -1,0 +1,87 @@
+id: bruin_asset_refresh
+namespace: quant.alpha
+description: >
+  Bruin-style asset graph execution (M5 Data Platforms pattern).
+  Runs the asset DAG in topological order: raw ingestion → staging → alpha panels
+  → diagnostics → reporting. Upstream failures automatically skip downstream assets.
+
+labels:
+  module: m5-data-platforms
+  track: both
+
+inputs:
+  - id: project_root
+    type: STRING
+    defaults: /app
+  - id: targets
+    type: STRING
+    defaults: ""
+    description: >
+      Comma-separated asset names to run (with upstream). Leave empty to run all.
+  - id: dry_run
+    type: BOOLEAN
+    defaults: false
+
+tasks:
+  - id: bruin_lineage_check
+    type: io.kestra.plugin.scripts.shell.Commands
+    description: Print the asset lineage graph before execution (always runs).
+    commands:
+      - cd {{ inputs.project_root }} && quant-alpha bruin-lineage
+    timeout: PT1M
+
+  - id: bruin_execute
+    type: io.kestra.plugin.scripts.shell.Commands
+    description: Execute asset graph in topological order.
+    commands:
+      - >
+        cd {{ inputs.project_root }} &&
+        quant-alpha bruin-run
+        {% if inputs.targets %}--targets "{{ inputs.targets }}"{% endif %}
+        {% if inputs.dry_run %}--dry-run{% endif %}
+    timeout: PT30M
+
+  - id: validate_asset_outputs
+    type: io.kestra.plugin.scripts.shell.Commands
+    description: Check that key mart assets have rows in DuckDB.
+    commands:
+      - >
+        python3 - <<'PY'
+        import duckdb, sys
+        from pathlib import Path
+
+        db = Path("{{ inputs.project_root }}") / "data/warehouse/quant_alpha.duckdb"
+        if not db.exists():
+            print("DuckDB not found — skip validation", file=sys.stderr)
+            sys.exit(0)
+
+        with duckdb.connect(str(db), read_only=True) as con:
+            tables = [r[0] for r in con.execute("SHOW TABLES").fetchall()]
+
+        expected = ["raw_prices", "alpha_panel", "alpha_diagnostics"]
+        missing = [t for t in expected if t not in tables]
+        if missing:
+            print(f"Missing tables after Bruin run: {missing}", file=sys.stderr)
+            sys.exit(1)
+
+        print(f"All expected tables present: {expected}")
+        PY
+    timeout: PT2M
+
+errors:
+  - id: log_failure
+    type: io.kestra.plugin.scripts.shell.Commands
+    commands:
+      - echo "Bruin asset graph failed at $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+
+triggers:
+  - id: weekly_full_refresh
+    type: io.kestra.plugin.core.trigger.Schedule
+    cron: "0 3 * * MON"
+    description: Full asset graph refresh every Monday at 03:00 UTC
+
+  - id: after_dlt_ingestion
+    type: io.kestra.plugin.core.trigger.Flow
+    flowId: dlt_ingestion_pipeline
+    namespace: quant.alpha
+    description: Trigger asset refresh automatically after dlt ingestion completes

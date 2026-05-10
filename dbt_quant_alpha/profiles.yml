@@ -1,0 +1,7 @@
+quant_alpha:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: ../data/warehouse/quant_alpha.duckdb
+      threads: 4

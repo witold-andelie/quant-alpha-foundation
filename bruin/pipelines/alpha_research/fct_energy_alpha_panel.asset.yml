@@ -1,0 +1,59 @@
+name: fct_energy_alpha_panel
+type: duckdb.table
+connection: duckdb_energy
+description: >
+  Wide energy alpha panel: one row per (timestamp, market) with all eight
+  Second Foundation alpha factor scores and forward spot-price returns.
+  Primary input for energy backtest and decay analysis.
+
+depends:
+  - stg_power_market
+
+owner: energy-research
+tags:
+  - energy
+  - alpha
+  - panel
+
+columns:
+  - name: timestamp
+    type: timestamp
+    checks: [not_null]
+  - name: market
+    type: varchar
+    checks: [not_null]
+  - name: spot_price
+    checks: [not_null]
+  - name: alpha_energy_residual_load_rank
+    description: CS rank of residual load (supply tightness signal)
+  - name: alpha_energy_wind_forecast_error
+    description: Rank of wind forecast error (surprise)
+  - name: alpha_energy_imbalance_premium
+    description: Rank of imbalance_price − spot_price
+  - name: alpha_energy_cross_market_spread
+    description: Rank of spot vs cross-market mean spread
+  - name: alpha_energy_demand_surprise
+    description: Rank of actual_load − load_forecast
+  - name: alpha_energy_solar_penetration
+    description: "-rank(solar_forecast / load_forecast) scarcity signal"
+  - name: alpha_energy_price_momentum_6h
+    description: "rank(spot_price / mean(spot_price, 6h) − 1)"
+  - name: alpha_energy_gas_spark_spread
+    description: "rank(spot_price − gas_price)"
+  - name: fwd_ret_1h
+    description: Forward 1-hour return (for IC)
+  - name: fwd_ret_6h
+    description: Forward 6-hour return
+  - name: fwd_ret_24h
+    description: Forward 24-hour return
+
+custom_checks:
+  - name: primary_key_unique
+    query: >
+      SELECT count(*) FROM (
+        SELECT timestamp, market, count(*) as n
+        FROM fct_energy_alpha_panel
+        GROUP BY timestamp, market
+        HAVING n > 1
+      )
+    value: 0

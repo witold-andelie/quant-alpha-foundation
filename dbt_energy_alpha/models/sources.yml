@@ -1,0 +1,19 @@
+version: 2
+
+sources:
+  - name: energy_raw
+    schema: "{{ env_var('ENERGY_SOURCE_SCHEMA', 'main') }}"
+    tables:
+      - name: power_market_raw
+      - name: power_market_features
+      - name: power_market_quality
+      - name: energy_alpha_registry
+      - name: energy_alpha_diagnostics
+      - name: energy_alpha_value_added
+      - name: energy_backtest_daily
+      - name: energy_backtest_metrics
+  - name: energy_alpha
+    schema: "{{ env_var('ENERGY_SOURCE_SCHEMA', 'main') }}"
+    tables:
+      - name: energy_alpha_decay
+      - name: energy_alpha_turnover

@@ -1,0 +1,65 @@
+id: second_foundation_energy_pipeline
+namespace: quant.alpha
+description: >
+  Hourly Second Foundation power-market pipeline: ingestion → quality checks →
+  alpha features → Spark batch → warehouse load → backtest → dbt marts.
+  WorldQuant-inspired energy factors (cross-market spread, demand surprise,
+  solar penetration, 6h momentum, gas-spark spread) are computed in each run.
+
+inputs:
+  - id: project_root
+    type: STRING
+    defaults: /app
+  - id: energy_source
+    type: STRING
+    defaults: synthetic
+
+tasks:
+  - id: ingest_and_compute
+    type: io.kestra.plugin.scripts.shell.Commands
+    description: Run full energy pipeline (ingestion → features → backtest → warehouse)
+    commands:
+      - >
+        cd {{ inputs.project_root }} &&
+        quant-alpha energy-run
+        --config configs/second_foundation_project.yaml
+        --source {{ inputs.energy_source }}
+    timeout: PT20M
+
+  - id: spark_batch_features
+    type: io.kestra.plugin.scripts.shell.Commands
+    description: Recompute Spark-based feature aggregations over the updated raw Parquet
+    commands:
+      - >
+        cd {{ inputs.project_root }} &&
+        python -m quant_alpha.batch.spark_energy_features
+    timeout: PT30M
+
+  - id: build_dbt_marts
+    type: io.kestra.plugin.scripts.shell.Commands
+    description: Refresh dbt energy-alpha marts in DuckDB
+    commands:
+      - >
+        cd {{ inputs.project_root }}/dbt_energy_alpha &&
+        dbt build --profiles-dir . --target duckdb
+    timeout: PT10M
+
+  - id: notify_on_failure
+    type: io.kestra.plugin.core.flow.If
+    condition: "{{ taskrun.state == 'FAILED' }}"
+    then:
+      - id: log_failure
+        type: io.kestra.plugin.scripts.shell.Commands
+        commands:
+          - echo "Pipeline failed at $(date -u). Check Kestra logs for details."
+
+errors:
+  - id: error_handler
+    type: io.kestra.plugin.scripts.shell.Commands
+    commands:
+      - echo "Energy pipeline error at $(date -u) — task {{ task.id }}"
+
+triggers:
+  - id: hourly
+    type: io.kestra.plugin.core.trigger.Schedule
+    cron: "5 * * * *"

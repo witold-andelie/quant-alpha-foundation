@@ -1,0 +1,11 @@
+# Copy to terraform.tfvars and fill in your values.
+# terraform.tfvars is git-ignored — never commit it.
+
+project_id             = "your-gcp-project-id"
+region                 = "europe-west3"
+bigquery_location      = "EU"
+dataset_id             = "second_foundation_quant"
+bucket_suffix          = "second-foundation-lake"
+artifact_repository_id = "second-foundation-containers"
+gke_cluster_name       = "second-foundation-quant"
+github_repo            = "your-github-username/quant-alpha-foundation"

@@ -1,0 +1,19 @@
+version: 2
+
+sources:
+  - name: quant_alpha_raw
+    schema: main
+    tables:
+      - name: raw_prices
+      - name: factor_panel
+      - name: backtest_daily
+      - name: backtest_metrics
+      - name: alpha_registry
+      - name: alpha_diagnostics
+      - name: alpha_value_added
+  - name: quant_alpha
+    schema: main
+    tables:
+      - name: alpha_decay
+      - name: alpha_turnover
+      - name: alpha_walk_forward

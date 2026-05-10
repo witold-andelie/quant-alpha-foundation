@@ -1,0 +1,15 @@
+energy_alpha:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: ../data/warehouse/second_foundation.duckdb
+      threads: 4
+    bigquery:
+      type: bigquery
+      method: service-account
+      project: "{{ env_var('GCP_PROJECT_ID') }}"
+      dataset: "{{ env_var('BQ_DATASET', 'second_foundation_quant') }}"
+      location: "{{ env_var('BQ_LOCATION', 'EU') }}"
+      keyfile: "{{ env_var('GOOGLE_APPLICATION_CREDENTIALS') }}"
+      threads: 4

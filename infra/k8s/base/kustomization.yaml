@@ -1,0 +1,18 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: quant-alpha
+resources:
+  - namespace.yaml
+  - service-account.yaml
+  - configmap.yaml
+  - secrets.yaml
+  - persistent-volume-claim.yaml
+  - energy-cronjob.yaml
+  - equity-cronjob.yaml
+  - dashboard-deployment.yaml
+  - dashboard-service.yaml
+  - kestra-deployment.yaml
+images:
+  - name: quant-alpha-foundation
+    newName: europe-west3-docker.pkg.dev/PROJECT_ID/second-foundation-containers/quant-alpha-foundation
+    newTag: "0.1.0"

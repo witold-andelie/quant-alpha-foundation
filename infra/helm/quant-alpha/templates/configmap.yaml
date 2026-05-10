@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: quant-alpha-config
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    {{- include "quant-alpha.labels" . | nindent 4 }}
+data:
+  {{- range $key, $val := .Values.config }}
+  {{ $key }}: {{ $val | quote }}
+  {{- end }}

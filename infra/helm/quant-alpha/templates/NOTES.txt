@@ -1,0 +1,46 @@
+== Quant Alpha Foundation — {{ .Chart.AppVersion }} ==
+
+Environment: {{ .Values.global.environment }}
+Namespace:   {{ .Values.global.namespace }}
+
+{{- if .Values.dashboard.enabled }}
+
+Dashboard deployed ({{ .Values.dashboard.replicaCount }} replica(s)).
+{{- if eq .Values.dashboard.service.type "NodePort" }}
+
+Access the Streamlit dashboard:
+  kubectl port-forward -n {{ .Values.global.namespace }} svc/quant-alpha-dashboard 8501:8501
+  open http://localhost:8501
+
+{{- else if eq .Values.dashboard.service.type "LoadBalancer" }}
+
+Wait for external IP (may take 1-2 min):
+  kubectl get svc -n {{ .Values.global.namespace }} quant-alpha-dashboard -w
+
+Then open: http://<EXTERNAL-IP>:{{ .Values.dashboard.service.port }}
+{{- else }}
+
+Port-forward to access:
+  kubectl port-forward -n {{ .Values.global.namespace }} svc/quant-alpha-dashboard 8501:{{ .Values.dashboard.service.port }}
+  open http://localhost:8501
+{{- end }}
+{{- end }}
+
+{{- if .Values.energyCronJob.enabled }}
+
+Energy CronJob running on schedule: {{ .Values.energyCronJob.schedule }}
+Check recent runs:
+  kubectl get jobs -n {{ .Values.global.namespace }} -l app.kubernetes.io/component=energy-ingestion
+{{- end }}
+
+{{- if .Values.equityCronJob.enabled }}
+
+Equity CronJob running on schedule: {{ .Values.equityCronJob.schedule }}
+{{- if .Values.equityCronJob.offline }}  (offline / synthetic prices){{- end }}
+{{- end }}
+
+View all resources:
+  kubectl get all -n {{ .Values.global.namespace }}
+
+Tail live logs:
+  kubectl logs -n {{ .Values.global.namespace }} -l app.kubernetes.io/name=quant-alpha -f

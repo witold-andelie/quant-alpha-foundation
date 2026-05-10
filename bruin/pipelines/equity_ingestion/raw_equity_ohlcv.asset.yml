@@ -1,0 +1,71 @@
+name: raw_equity_ohlcv
+type: python
+description: >
+  Downloads daily OHLCV equity prices from Yahoo Finance (or synthetic fallback)
+  and writes to DuckDB raw_prices table. This is the raw ingestion layer.
+
+connection: duckdb_local
+
+owner: ingestion-team
+tags:
+  - equity
+  - raw
+  - daily
+
+schedule: "0 7 * * 1-5"
+
+columns:
+  - name: date
+    type: date
+    description: Trading date (UTC)
+    checks:
+      - not_null
+  - name: symbol
+    type: varchar
+    description: Equity ticker symbol
+    checks:
+      - not_null
+  - name: open
+    type: double
+    description: Opening price
+  - name: high
+    type: double
+    description: Daily high
+  - name: low
+    type: double
+    description: Daily low
+  - name: close
+    type: double
+    description: Closing price
+    checks:
+      - not_null
+      - positive
+  - name: adj_close
+    type: double
+    description: Dividend/split-adjusted closing price
+  - name: volume
+    type: bigint
+    description: Trade volume
+    checks:
+      - not_null
+
+custom_checks:
+  - name: primary_key_unique
+    query: >
+      SELECT count(*) FROM (
+        SELECT date, symbol, count(*) as n
+        FROM raw_equity_ohlcv
+        GROUP BY date, symbol
+        HAVING n > 1
+      )
+    value: 0
+  - name: freshness_daily
+    query: >
+      SELECT datediff('day', max(date), current_date)
+      FROM raw_equity_ohlcv
+    operator: lte
+    value: 3
+
+run:
+  type: python
+  file: run_equity_ingestion.py

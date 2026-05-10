@@ -1,0 +1,30 @@
+project_name: second-foundation-energy-alpha
+raw_dir: data/raw
+processed_dir: data/processed
+duckdb_path: data/warehouse/second_foundation.duckdb
+universe_path: configs/energy_universe.yaml
+data_source: synthetic
+start_date: "2025-10-01"
+end_date: null
+bar_interval: 4h
+entsoe:
+  token_env: ENTSOE_API_KEY
+  base_url: https://web-api.tp.entsoe.eu/api
+cloud:
+  enabled: false
+  gcp_project_id: null
+  gcs_bucket: null
+  bigquery_dataset: second_foundation_quant
+  bigquery_location: EU
+  gcs_prefix: energy
+factor_horizons:
+  momentum: 24
+  reversal: 6
+  volatility: 72
+  breakout: 168
+backtest:
+  forward_return_days: 1
+  top_quantile: 0.34
+  bottom_quantile: 0.34
+  transaction_cost_bps: 1
+  periods_per_year: 2190

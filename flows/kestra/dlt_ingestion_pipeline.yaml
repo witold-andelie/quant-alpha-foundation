@@ -1,0 +1,90 @@
+id: dlt_ingestion_pipeline
+namespace: quant.alpha
+description: >
+  Incremental dlt ingestion pipeline (Workshop 1 pattern).
+  Runs dlt-energy and dlt-equity in sequence; the dlt cursor state persists in
+  _dlt_pipeline_state so only new records are loaded on each run.
+
+labels:
+  module: workshop-dlt
+  track: both
+
+inputs:
+  - id: project_root
+    type: STRING
+    defaults: /app
+  - id: energy_markets
+    type: STRING
+    defaults: "DE_LU,CZ,FR"
+  - id: energy_start
+    type: STRING
+    defaults: "2023-01-01"
+  - id: offline_equity
+    type: BOOLEAN
+    defaults: true
+
+tasks:
+  - id: dlt_energy_incremental
+    type: io.kestra.plugin.scripts.shell.Commands
+    description: >
+      Incremental energy load — only fetches records after the last loaded
+      timestamp stored in dlt_pipeline_state. First run loads full history.
+    commands:
+      - >
+        cd {{ inputs.project_root }} &&
+        quant-alpha dlt-energy
+        --markets "{{ inputs.energy_markets }}"
+        --start {{ inputs.energy_start }}
+    timeout: PT15M
+
+  - id: dlt_equity_incremental
+    type: io.kestra.plugin.scripts.shell.Commands
+    description: >
+      Incremental equity OHLCV load — only fetches rows after the last loaded
+      date. Uses synthetic prices when offline_equity is true.
+    commands:
+      - >
+        cd {{ inputs.project_root }} &&
+        quant-alpha dlt-equity
+        {% if inputs.offline_equity %}--offline{% endif %}
+    timeout: PT10M
+
+  - id: verify_row_counts
+    type: io.kestra.plugin.scripts.shell.Commands
+    description: Sanity-check that both dlt destination tables have data.
+    commands:
+      - >
+        python3 - <<'PY'
+        import duckdb, sys
+        from pathlib import Path
+
+        root = Path("{{ inputs.project_root }}")
+        energy_db = root / "data/warehouse/second_foundation.duckdb"
+        equity_db = root / "data/warehouse/quant_alpha.duckdb"
+
+        with duckdb.connect(str(energy_db), read_only=True) as con:
+            n_energy = con.execute("SELECT count(*) FROM dlt_energy_raw.power_market_raw").fetchone()[0]
+
+        with duckdb.connect(str(equity_db), read_only=True) as con:
+            n_equity = con.execute("SELECT count(*) FROM dlt_equity_raw.equity_ohlcv").fetchone()[0]
+
+        print(f"dlt_energy_raw.power_market_raw: {n_energy} rows")
+        print(f"dlt_equity_raw.equity_ohlcv:     {n_equity} rows")
+
+        if n_energy == 0 or n_equity == 0:
+            print("ERROR: one or both dlt tables are empty", file=sys.stderr)
+            sys.exit(1)
+        PY
+    timeout: PT2M
+
+errors:
+  - id: log_failure
+    type: io.kestra.plugin.scripts.shell.Commands
+    commands:
+      - echo "dlt ingestion failed at $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+
+triggers:
+  - id: daily_after_equity_close
+    type: io.kestra.plugin.core.trigger.Schedule
+    cron: "30 22 * * MON-FRI"
+    description: Run after equity markets close, before the main alpha pipeline

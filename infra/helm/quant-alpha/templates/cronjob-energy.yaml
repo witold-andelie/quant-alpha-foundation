@@ -1,0 +1,46 @@
+{{- if .Values.energyCronJob.enabled }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: energy-alpha-refresh
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    {{- include "quant-alpha.labels" . | nindent 4 }}
+    app.kubernetes.io/component: energy-ingestion
+spec:
+  schedule: {{ .Values.energyCronJob.schedule | quote }}
+  concurrencyPolicy: {{ .Values.energyCronJob.concurrencyPolicy }}
+  successfulJobsHistoryLimit: {{ .Values.energyCronJob.successfulJobsHistoryLimit }}
+  failedJobsHistoryLimit: {{ .Values.energyCronJob.failedJobsHistoryLimit }}
+  jobTemplate:
+    spec:
+      backoffLimit: {{ .Values.energyCronJob.backoffLimit }}
+      template:
+        metadata:
+          labels:
+            {{- include "quant-alpha.selectorLabels" . | nindent 12 }}
+            app.kubernetes.io/component: energy-ingestion
+        spec:
+          serviceAccountName: {{ include "quant-alpha.serviceAccountName" . }}
+          restartPolicy: Never
+          containers:
+            - name: energy-alpha
+              image: {{ include "quant-alpha.image" . }}
+              imagePullPolicy: {{ .Values.image.pullPolicy }}
+              command:
+                - quant-alpha
+                - energy-run
+                - --config
+                - /app/configs/second_foundation_project.yaml
+              envFrom:
+                - configMapRef:
+                    name: quant-alpha-config
+                - secretRef:
+                    name: {{ include "quant-alpha.secretName" . }}
+              resources:
+                {{- toYaml .Values.energyCronJob.resources | nindent 16 }}
+              volumeMounts:
+                {{- include "quant-alpha.dataVolumeMount" . | nindent 16 }}
+          volumes:
+            {{- include "quant-alpha.dataVolume" . | nindent 12 }}
+{{- end }}

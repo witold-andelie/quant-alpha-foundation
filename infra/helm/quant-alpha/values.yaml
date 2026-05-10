@@ -1,0 +1,133 @@
+# Default values — production-like baseline.
+# Override with values.dev.yaml or values.prod.yaml.
+
+# --------------------------------------------------------------------------- #
+# Global
+# --------------------------------------------------------------------------- #
+global:
+  namespace: quant-alpha
+  environment: production
+
+# --------------------------------------------------------------------------- #
+# Image
+# --------------------------------------------------------------------------- #
+image:
+  repository: europe-west3-docker.pkg.dev/REPLACE_PROJECT_ID/second-foundation-containers/quant-alpha-foundation
+  tag: "0.1.0"
+  pullPolicy: IfNotPresent
+
+# --------------------------------------------------------------------------- #
+# Service Account
+# --------------------------------------------------------------------------- #
+serviceAccount:
+  create: true
+  name: quant-alpha-runner
+  annotations: {}
+
+# --------------------------------------------------------------------------- #
+# ConfigMap — environment variables injected into every workload
+# --------------------------------------------------------------------------- #
+config:
+  QUANT_ALPHA_ENV: "kubernetes"
+  QUANT_ALPHA_RAW_DIR: "/app/data/raw"
+  QUANT_ALPHA_PROCESSED_DIR: "/app/data/processed"
+  QUANT_ALPHA_DUCKDB_PATH: "/app/data/warehouse/quant_alpha.duckdb"
+  SECOND_FOUNDATION_DUCKDB_PATH: "/app/data/warehouse/second_foundation.duckdb"
+  QUANT_ALPHA_CONFIG: "/app/configs/project.yaml"
+  SECOND_FOUNDATION_CONFIG: "/app/configs/second_foundation_project.yaml"
+  KAFKA_BOOTSTRAP_SERVERS: "redpanda:9092"
+
+# --------------------------------------------------------------------------- #
+# Secrets (values are base64 placeholders — override in CI or via external secret)
+# --------------------------------------------------------------------------- #
+secrets:
+  create: true
+  # Set to false and provide secretName to use an externally-managed secret
+  external: false
+  secretName: quant-alpha-secrets
+  data:
+    ENTSOE_API_KEY: ""        # base64-encode your token
+    GCP_SA_JSON: ""           # base64-encode service account JSON
+
+# --------------------------------------------------------------------------- #
+# Persistent Volume Claim
+# --------------------------------------------------------------------------- #
+persistence:
+  enabled: true
+  claimName: quant-alpha-data
+  storageClass: ""            # "" = cluster default; use "standard-rwo" on GKE
+  accessMode: ReadWriteOnce
+  size: 20Gi
+
+# --------------------------------------------------------------------------- #
+# Dashboard (Streamlit)
+# --------------------------------------------------------------------------- #
+dashboard:
+  enabled: true
+  replicaCount: 1
+  port: 8501
+  service:
+    type: ClusterIP
+    port: 8501
+  resources:
+    requests:
+      cpu: "250m"
+      memory: "512Mi"
+    limits:
+      cpu: "1"
+      memory: "1Gi"
+  readinessProbe:
+    initialDelaySeconds: 10
+    periodSeconds: 10
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 3
+    targetCPUUtilizationPercentage: 70
+
+# --------------------------------------------------------------------------- #
+# Energy CronJob
+# --------------------------------------------------------------------------- #
+energyCronJob:
+  enabled: true
+  schedule: "15 * * * *"       # every hour at :15
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  backoffLimit: 1
+  resources:
+    requests:
+      cpu: "500m"
+      memory: "1Gi"
+    limits:
+      cpu: "2"
+      memory: "4Gi"
+
+# --------------------------------------------------------------------------- #
+# Equity CronJob
+# --------------------------------------------------------------------------- #
+equityCronJob:
+  enabled: true
+  schedule: "0 23 * * 1-5"    # 23:00 UTC Mon–Fri
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 2
+  failedJobsHistoryLimit: 2
+  backoffLimit: 1
+  offline: true                # use synthetic prices; set false for live yfinance
+  resources:
+    requests:
+      cpu: "250m"
+      memory: "512Mi"
+    limits:
+      cpu: "1"
+      memory: "2Gi"
+
+# --------------------------------------------------------------------------- #
+# Pod-level defaults
+# --------------------------------------------------------------------------- #
+podAnnotations: {}
+podSecurityContext: {}
+securityContext: {}
+nodeSelector: {}
+tolerations: []
+affinity: {}

@@ -1,0 +1,20 @@
+apiVersion: v2
+name: quant-alpha
+description: >
+  WorldQuant / Second Foundation-inspired quantitative alpha research platform.
+  Runs equity and energy ingestion CronJobs plus the Streamlit research dashboard.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+
+keywords:
+  - quantitative-finance
+  - alpha-research
+  - energy-markets
+  - data-engineering
+
+maintainers:
+  - name: research-platform
+    email: andelie1892@gmail.com
+
+dependencies: []

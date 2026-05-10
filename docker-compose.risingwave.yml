@@ -1,0 +1,106 @@
+version: "3.9"
+
+# Minimal local stack for RisingWave Workshop 2 demo:
+#   Redpanda (Kafka-compatible broker) + RisingWave (streaming SQL engine)
+#   Use: docker compose -f docker-compose.risingwave.yml up -d
+
+services:
+
+  # ---------------------------------------------------------------------------
+  # Redpanda — Kafka-compatible message broker
+  # Receives power_market_signals JSON messages from the producer
+  # ---------------------------------------------------------------------------
+  redpanda:
+    image: redpandadata/redpanda:v24.1.1
+    container_name: redpanda
+    command:
+      - redpanda start
+      - --smp 1
+      - --memory 512M
+      - --reserve-memory 0M
+      - --node-id 0
+      - --kafka-addr PLAINTEXT://0.0.0.0:9092
+      - --advertise-kafka-addr PLAINTEXT://redpanda:9092
+      - --pandaproxy-addr 0.0.0.0:8082
+      - --advertise-pandaproxy-addr redpanda:8082
+      - --schema-registry-addr 0.0.0.0:8081
+      - --rpc-addr 0.0.0.0:33145
+      - --advertise-rpc-addr redpanda:33145
+      - --overprovisioned
+      - --set redpanda.enable_transactions=true
+    ports:
+      - "9092:9092"
+      - "8081:8081"
+      - "8082:8082"
+    healthcheck:
+      test: ["CMD", "rpk", "cluster", "info", "--brokers=redpanda:9092"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # Redpanda Console — UI for inspecting topics and messages
+  redpanda-console:
+    image: redpandadata/console:v2.5.2
+    container_name: redpanda-console
+    depends_on: [redpanda]
+    ports:
+      - "8080:8080"
+    environment:
+      KAFKA_BROKERS: "redpanda:9092"
+      KAFKA_SCHEMAREGISTRY_ENABLED: "true"
+      KAFKA_SCHEMAREGISTRY_URLS: "http://redpanda:8081"
+
+  # Create topics on startup
+  redpanda-init:
+    image: redpandadata/redpanda:v24.1.1
+    container_name: redpanda-init
+    depends_on:
+      redpanda:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "-c"]
+    command: |
+      "rpk topic create power_market_signals --brokers=redpanda:9092 --partitions=3 --replicas=1 || true
+       rpk topic create scarcity_alerts --brokers=redpanda:9092 --partitions=1 --replicas=1 || true
+       echo 'Topics ready.'"
+
+  # ---------------------------------------------------------------------------
+  # RisingWave — streaming SQL engine (single-node standalone mode)
+  # Connects to Redpanda and materialises SQL views in real time
+  # ---------------------------------------------------------------------------
+  risingwave:
+    image: risingwavelabs/risingwave:v2.0.1
+    container_name: risingwave
+    command: standalone
+    ports:
+      - "4566:4566"   # PostgreSQL wire protocol (psql / psycopg2)
+      - "5691:5691"   # Meta dashboard
+    environment:
+      RUST_LOG: info
+    depends_on:
+      redpanda:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "psql", "-h", "localhost", "-p", "4566", "-U", "root", "-c", "SELECT 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+
+  # ---------------------------------------------------------------------------
+  # Signal producer — generates synthetic energy signals and writes to Redpanda
+  # Replace with real ENTSO-E data for production use
+  # ---------------------------------------------------------------------------
+  signal-producer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: signal-producer
+    depends_on:
+      redpanda:
+        condition: service_healthy
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: "redpanda:9092"
+      KAFKA_TOPIC: "power_market_signals"
+      MARKETS: "DE_LU,CZ,FR"
+      INTERVAL_SECONDS: "60"
+    command: ["python", "-m", "quant_alpha.streaming.risingwave.producer"]
+    restart: unless-stopped

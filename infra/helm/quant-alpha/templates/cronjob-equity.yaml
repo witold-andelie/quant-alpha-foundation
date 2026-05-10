@@ -1,0 +1,47 @@
+{{- if .Values.equityCronJob.enabled }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: equity-alpha-refresh
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    {{- include "quant-alpha.labels" . | nindent 4 }}
+    app.kubernetes.io/component: equity-ingestion
+spec:
+  schedule: {{ .Values.equityCronJob.schedule | quote }}
+  concurrencyPolicy: {{ .Values.equityCronJob.concurrencyPolicy }}
+  successfulJobsHistoryLimit: {{ .Values.equityCronJob.successfulJobsHistoryLimit }}
+  failedJobsHistoryLimit: {{ .Values.equityCronJob.failedJobsHistoryLimit }}
+  jobTemplate:
+    spec:
+      backoffLimit: {{ .Values.equityCronJob.backoffLimit }}
+      template:
+        metadata:
+          labels:
+            {{- include "quant-alpha.selectorLabels" . | nindent 12 }}
+            app.kubernetes.io/component: equity-ingestion
+        spec:
+          serviceAccountName: {{ include "quant-alpha.serviceAccountName" . }}
+          restartPolicy: Never
+          containers:
+            - name: equity-alpha
+              image: {{ include "quant-alpha.image" . }}
+              imagePullPolicy: {{ .Values.image.pullPolicy }}
+              command:
+                - quant-alpha
+                - run
+                {{- if .Values.equityCronJob.offline }}
+                - --offline
+                {{- end }}
+                - --config
+                - /app/configs/project.yaml
+              envFrom:
+                - configMapRef:
+                    name: quant-alpha-config
+              resources:
+                {{- toYaml .Values.equityCronJob.resources | nindent 16 }}
+              volumeMounts:
+                {{- include "quant-alpha.dataVolumeMount" . | nindent 16 }}
+          volumes:
+            {{- include "quant-alpha.dataVolume" . | nindent 12 }}
+{{- end }}

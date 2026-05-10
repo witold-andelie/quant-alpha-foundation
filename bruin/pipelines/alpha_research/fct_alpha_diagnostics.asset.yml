@@ -1,0 +1,51 @@
+name: fct_alpha_diagnostics
+type: duckdb.table
+connection: duckdb_local
+description: >
+  Alpha diagnostics summary: one row per alpha factor with OOS IC mean,
+  IC-IR, consistency score, and four-gate evaluation flags
+  (Robustness, Uniqueness, Value-Added, Consistency).
+
+depends:
+  - fct_equity_alpha_panel
+
+owner: alpha-research
+tags:
+  - equity
+  - diagnostics
+  - gates
+
+columns:
+  - name: alpha_name
+    type: varchar
+    checks: [not_null]
+  - name: oos_ic_mean
+    description: Mean IC on out-of-sample period
+  - name: oos_ic_ir
+    description: IC / std(IC) — information ratio
+  - name: consistency_score
+    description: "Fraction of rolling windows with IC > 0, minus 0.5 (range −0.5..+0.5)"
+  - name: gate_robustness
+    type: boolean
+    description: "True if |IC| stable across sub-periods (std/mean < 1.5)"
+  - name: gate_uniqueness
+    type: boolean
+    description: "True if pairwise IC correlation with other alphas < 0.5"
+  - name: gate_value_added
+    type: boolean
+    description: "True if combo IC > best single-factor IC"
+  - name: gate_consistency
+    type: boolean
+    description: "True if consistency_score > 0"
+  - name: gates_passed
+    type: integer
+    description: Number of gates passed (0-4)
+
+custom_checks:
+  - name: all_gates_evaluated
+    query: SELECT count(*) FROM fct_alpha_diagnostics WHERE gates_passed IS NULL
+    value: 0
+  - name: consistency_gate_regression
+    query: SELECT count(*) FROM fct_alpha_diagnostics WHERE gate_consistency = false AND consistency_score < -0.1
+    operator: lte
+    value: 2

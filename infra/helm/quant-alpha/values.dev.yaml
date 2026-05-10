@@ -1,0 +1,52 @@
+# Development overlay — local Kind/Docker Desktop cluster.
+# Usage: helm upgrade --install quant-alpha ./infra/helm/quant-alpha \
+#          -f infra/helm/quant-alpha/values.dev.yaml
+
+global:
+  environment: development
+
+image:
+  repository: quant-alpha-foundation   # local image loaded with: kind load docker-image
+  tag: "dev"
+  pullPolicy: Never                     # never pull — use locally built image
+
+persistence:
+  size: 5Gi                            # small local volume
+
+dashboard:
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "256Mi"
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+  service:
+    type: NodePort                      # expose directly on localhost in dev
+
+energyCronJob:
+  enabled: true
+  schedule: "*/30 * * * *"             # every 30 min in dev (faster feedback)
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "256Mi"
+    limits:
+      cpu: "500m"
+      memory: "1Gi"
+
+equityCronJob:
+  enabled: true
+  schedule: "0 * * * *"               # every hour in dev
+  offline: true
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "256Mi"
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+
+config:
+  QUANT_ALPHA_ENV: "development"

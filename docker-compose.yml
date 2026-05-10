@@ -1,0 +1,91 @@
+services:
+  quant-alpha:
+    build: .
+    env_file: .env.example
+    volumes:
+      - ./data:/app/data
+      - ./configs:/app/configs
+    command: ["quant-alpha", "energy-run"]
+
+  quant-alpha-equities:
+    build: .
+    env_file: .env.example
+    volumes:
+      - ./data:/app/data
+      - ./configs:/app/configs
+    command: ["quant-alpha", "run", "--offline"]
+
+  dashboard:
+    build: .
+    env_file: .env.example
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./data:/app/data
+      - ./configs:/app/configs
+    command: ["streamlit", "run", "streamlit_app/app.py", "--server.address=0.0.0.0"]
+
+  redpanda:
+    image: docker.redpanda.com/redpandadata/redpanda:v24.2.8
+    command:
+      - redpanda
+      - start
+      - --overprovisioned
+      - --smp=1
+      - --memory=1G
+      - --reserve-memory=0M
+      - --node-id=0
+      - --check=false
+      - --kafka-addr=PLAINTEXT://0.0.0.0:9092,OUTSIDE://0.0.0.0:19092
+      - --advertise-kafka-addr=PLAINTEXT://redpanda:9092,OUTSIDE://localhost:19092
+      - --pandaproxy-addr=0.0.0.0:8082
+      - --advertise-pandaproxy-addr=redpanda:8082
+    ports:
+      - "19092:19092"
+      - "18082:8082"
+
+  redpanda-console:
+    image: docker.redpanda.com/redpandadata/console:v2.7.2
+    depends_on:
+      - redpanda
+    environment:
+      KAFKA_BROKERS: redpanda:9092
+    ports:
+      - "8081:8080"
+
+  kestra-postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: kestra
+      POSTGRES_USER: kestra
+      POSTGRES_PASSWORD: kestra
+    volumes:
+      - kestra-postgres:/var/lib/postgresql/data
+
+  kestra:
+    image: kestra/kestra:latest
+    depends_on:
+      - kestra-postgres
+    ports:
+      - "8080:8080"
+    command: server standalone
+    environment:
+      KESTRA_CONFIGURATION: |
+        datasources:
+          postgres:
+            url: jdbc:postgresql://kestra-postgres:5432/kestra
+            driverClassName: org.postgresql.Driver
+            username: kestra
+            password: kestra
+        kestra:
+          repository:
+            type: postgres
+          queue:
+            type: postgres
+          storage:
+            type: local
+            local:
+              basePath: /tmp/kestra-storage
+
+volumes:
+  kestra-postgres:

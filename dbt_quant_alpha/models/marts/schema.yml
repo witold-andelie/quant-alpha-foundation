@@ -1,0 +1,35 @@
+version: 2
+
+models:
+  - name: fct_alpha_panel
+    description: "Research mart containing alpha scores and future returns."
+    columns:
+      - name: signal_date
+        tests:
+          - not_null
+      - name: symbol
+        tests:
+          - not_null
+      - name: alpha_composite
+        tests:
+          - not_null
+
+  - name: fct_backtest_daily
+    description: "Daily long-short factor backtest returns."
+    columns:
+      - name: signal_date
+        tests:
+          - not_null
+      - name: equity_curve
+        tests:
+          - not_null
+
+  - name: fct_alpha_diagnostics
+    description: "IS/OOS diagnostics for each individual alpha expression."
+    columns:
+      - name: alpha_name
+        tests:
+          - not_null
+      - name: consistency_score
+        tests:
+          - not_null

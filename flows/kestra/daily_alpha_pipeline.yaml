@@ -1,0 +1,22 @@
+id: daily_quant_alpha_pipeline
+namespace: quant.alpha
+description: Daily market data ingestion, alpha refresh, warehouse load, and backtest.
+
+inputs:
+  - id: offline
+    type: BOOLEAN
+    defaults: true
+  - id: project_root
+    type: STRING
+    defaults: /app
+
+tasks:
+  - id: run_quant_alpha_pipeline
+    type: io.kestra.plugin.scripts.shell.Commands
+    commands:
+      - cd {{ inputs.project_root }} && quant-alpha run {% if inputs.offline %}--offline{% endif %}
+
+triggers:
+  - id: weekday_after_close
+    type: io.kestra.plugin.core.trigger.Schedule
+    cron: "0 22 * * MON-FRI"

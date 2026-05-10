@@ -1,0 +1,80 @@
+name: raw_power_market
+type: python
+description: >
+  Ingests hourly European power-market data from ENTSO-E API or synthetic
+  generator. Writes to DuckDB power_market_raw table. The Second Foundation
+  energy research raw layer.
+
+connection: duckdb_energy
+
+owner: energy-research
+tags:
+  - energy
+  - raw
+  - hourly
+
+schedule: "15 * * * *"   # 15 min past each hour
+
+columns:
+  - name: timestamp
+    type: timestamp
+    description: UTC hour-start timestamp
+    checks:
+      - not_null
+  - name: market
+    type: varchar
+    description: EIC bidding zone code (e.g. DE_LU, FR, CZ)
+    checks:
+      - not_null
+  - name: spot_price
+    type: double
+    description: Day-ahead spot price (€/MWh)
+    checks:
+      - not_null
+  - name: load_forecast
+    type: double
+    description: Total load forecast (GW)
+  - name: actual_load
+    type: double
+    description: Metered actual load (GW)
+  - name: wind_forecast
+    type: double
+    description: Wind generation forecast (GW)
+  - name: solar_forecast
+    type: double
+    description: Solar generation forecast (GW)
+  - name: residual_load
+    type: double
+    description: load_forecast − wind_forecast − solar_forecast (GW)
+  - name: imbalance_price
+    type: double
+    description: Balancing market imbalance price (€/MWh)
+  - name: gas_price
+    type: double
+    description: Natural gas thermal equivalent (€/MWh)
+
+custom_checks:
+  - name: primary_key_unique
+    query: >
+      SELECT count(*) FROM (
+        SELECT timestamp, market, count(*) as n
+        FROM power_market_raw
+        GROUP BY timestamp, market
+        HAVING n > 1
+      )
+    value: 0
+  - name: spot_price_range
+    query: >
+      SELECT count(*) FROM power_market_raw
+      WHERE spot_price < -500 OR spot_price > 3000
+    value: 0
+  - name: freshness_hourly
+    query: >
+      SELECT datediff('hour', max(timestamp), now())
+      FROM power_market_raw
+    operator: lte
+    value: 4
+
+run:
+  type: python
+  file: run_energy_ingestion.py

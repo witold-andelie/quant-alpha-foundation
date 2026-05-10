@@ -1,0 +1,19 @@
+project_name: quant-alpha-foundation
+raw_dir: data/raw
+processed_dir: data/processed
+duckdb_path: data/warehouse/quant_alpha.duckdb
+universe_path: configs/universe.yaml
+start_date: "2021-01-01"
+end_date: null
+bar_interval: 1d
+factor_horizons:
+  momentum: 21
+  reversal: 5
+  volatility: 20
+  breakout: 55
+backtest:
+  forward_return_days: 5
+  top_quantile: 0.2
+  bottom_quantile: 0.2
+  transaction_cost_bps: 1
+  periods_per_year: 252

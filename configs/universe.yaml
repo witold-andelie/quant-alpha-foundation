@@ -1,0 +1,16 @@
+name: liquid_us_equity_core
+timezone: America/New_York
+asset_class: equities
+symbols:
+  - AAPL
+  - MSFT
+  - NVDA
+  - AMZN
+  - META
+  - GOOGL
+  - JPM
+  - XOM
+  - UNH
+  - SPY
+benchmarks:
+  - SPY

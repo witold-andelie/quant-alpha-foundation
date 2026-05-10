@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: quant-alpha-dashboard
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: quant-alpha-dashboard
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: quant-alpha-dashboard
+    spec:
+      serviceAccountName: quant-alpha-runner
+      containers:
+        - name: dashboard
+          image: quant-alpha-foundation:0.1.0
+          imagePullPolicy: IfNotPresent
+          command:
+            - streamlit
+            - run
+            - streamlit_app/app.py
+            - --server.address=0.0.0.0
+            - --server.port=8501
+          ports:
+            - containerPort: 8501
+              name: http
+          envFrom:
+            - configMapRef:
+                name: quant-alpha-config
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "512Mi"
+            limits:
+              cpu: "1"
+              memory: "1Gi"
+          volumeMounts:
+            - name: quant-alpha-data
+              mountPath: /app/data
+      volumes:
+        - name: quant-alpha-data
+          persistentVolumeClaim:
+            claimName: quant-alpha-data

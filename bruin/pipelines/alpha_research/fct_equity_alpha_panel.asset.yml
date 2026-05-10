@@ -1,0 +1,61 @@
+name: fct_equity_alpha_panel
+type: duckdb.table
+connection: duckdb_local
+description: >
+  Wide equity alpha panel: one row per (date, symbol) with all computed alpha
+  factor scores, forward returns, and cross-sectional ranks. This is the primary
+  input for backtest and diagnostics.
+
+depends:
+  - stg_equity_ohlcv
+
+owner: alpha-research
+tags:
+  - equity
+  - alpha
+  - panel
+
+columns:
+  - name: date
+    type: date
+    checks: [not_null]
+  - name: symbol
+    type: varchar
+    checks: [not_null]
+  - name: adj_close
+    checks: [not_null, positive]
+  - name: ret_1d
+    description: 1-day log return
+  - name: alpha_momentum_12_1
+    description: "WQ-style 12-1 month cross-sectional momentum rank"
+  - name: alpha_volume_surprise
+    description: Volume vs 20-day average surprise (microstructure)
+  - name: alpha_wq_007_price_to_ma_reversion
+    description: "-rank(close / MA60 − 1) mean-reversion signal"
+  - name: alpha_wq_008_overnight_gap
+    description: "rank(open / prev_close − 1) overnight gap signal"
+  - name: alpha_wq_009_volume_weighted_return
+    description: "rank(VWAP 10d return)"
+  - name: alpha_wq_010_gap_quality
+    description: "-rank(std(overnight_gap, 20)) quality filter"
+  - name: fwd_ret_1d
+    description: Forward 1-day return (for IC calculation)
+  - name: fwd_ret_5d
+    description: Forward 5-day return
+  - name: fwd_ret_22d
+    description: Forward 22-day return
+
+custom_checks:
+  - name: primary_key_unique
+    query: >
+      SELECT count(*) FROM (
+        SELECT date, symbol, count(*) as n
+        FROM fct_equity_alpha_panel
+        GROUP BY date, symbol
+        HAVING n > 1
+      )
+    value: 0
+  - name: minimum_symbols
+    query: SELECT min(symbol_count) FROM (SELECT date, count(distinct symbol) as symbol_count FROM fct_equity_alpha_panel GROUP BY date)
+    operator: gte
+    value: 3

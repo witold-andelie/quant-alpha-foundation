@@ -1,0 +1,18 @@
+name: european_power_demo
+timezone: Europe/Prague
+asset_class: power_spot
+markets:
+  - DE_LU
+  - CZ
+  - FR
+entsoe_domains:
+  DE_LU: 10Y1001A1001A82H
+  CZ: 10YCZ-CEPS-----N
+  FR: 10YFR-RTE------C
+features:
+  - spot_price
+  - load_forecast
+  - wind_forecast
+  - solar_forecast
+  - residual_load
+  - imbalance_price

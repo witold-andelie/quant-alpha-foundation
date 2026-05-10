@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: quant-alpha-config
+data:
+  QUANT_ALPHA_ENV: "kubernetes"
+  QUANT_ALPHA_RAW_DIR: "/app/data/raw"
+  QUANT_ALPHA_PROCESSED_DIR: "/app/data/processed"
+  QUANT_ALPHA_DUCKDB_PATH: "/app/data/warehouse/quant_alpha.duckdb"
+  SECOND_FOUNDATION_DUCKDB_PATH: "/app/data/warehouse/second_foundation.duckdb"
+  QUANT_ALPHA_CONFIG: "/app/configs/project.yaml"
+  SECOND_FOUNDATION_CONFIG: "/app/configs/second_foundation_project.yaml"
+  KAFKA_BOOTSTRAP_SERVERS: "redpanda:9092"
